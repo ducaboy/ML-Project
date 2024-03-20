@@ -2,8 +2,9 @@ import os
 import gymnasium as gym 
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 
-env = gym.make("CartPole-v1" , render_mode="human") 
+env = gym.make("CartPole-v1") 
 
 def discretization():
 
@@ -54,6 +55,8 @@ def Q_learning():
 
     Qtab = {} 
     epsilon = 1
+    reward_list = []
+    eps_list = []
 
     for i in range(n_intervals):                               #create a table for each possible entry of space velocity angle and angular velocity
          for j in range(n_intervals):
@@ -70,7 +73,7 @@ def Q_learning():
         discretized_space = discretization()                            #discretize the space
         d_state = state_discretization(state, discretized_space)
         print(e , epsilon)
-
+        episode_R = 0
 
         for step in range(max_steps):
 
@@ -81,6 +84,8 @@ def Q_learning():
             action = choose_action(d_state , Qtab , epsilon)                                    #we choose an action according to our policy and make the environment make a step 
             next_state, reward, done,_ , _ = env.step(action)           #fetch the results
 
+            episode_R += reward
+            
             next_d_state = state_discretization(next_state , discretized_space) #discretize the new state
             #print(next_d_state)
 
@@ -97,9 +102,13 @@ def Q_learning():
             d_state = next_d_state #we update the state, ww do it for OUR computations, the state is saved in the env which will do the next step on its own
 
         if epsilon > epsilon_floor:
-            epsilon *= epsilon_decay
+            #epsilon *= epsilon_decay
+            epsilon = epsilon_floor + (epsilon_max - epsilon_floor)*np.exp(-epsilon_delta*e)
+        
+        reward_list.append(episode_R)
+        eps_list.append(epsilon)
 
-    return Qtab
+    return Qtab , reward_list , eps_list
 
 def testing(policy):
 
@@ -140,15 +149,27 @@ def random_a():
 
 #epsilon = 1 
 n_intervals = 50
-n_episodes = 2000
-n_runs = 50
-max_steps = 200
+n_episodes = 10000
+n_runs = 200
+max_steps = 500
 epsilon_floor = 0.01
+epsilon_max = 1
+
+epsilon_delta = 0.005
 alpha = 0.5
 gamma = 0.99
-epsilon_decay = 0.999
 
-qtable = Q_learning()
+epsilon_decay = 0.999
+bucket = 100
+
+
+qtable, reward_list , eps_lis = Q_learning()
+# Example list
+
+list_str = str(reward_list)
+with open("learning4.txt", "w") as file:
+    file.write(list_str)
+
 #f = open("./Scrivania/ML/dict.txt","w")
 
 # write file
@@ -156,6 +177,35 @@ qtable = Q_learning()
 
 # close file
 #f.close()
-input("Press Enter to call the function...")
+points = list(range(int(n_episodes)))
+bucket_points = list(range(int(n_episodes/bucket)))
+#print(points)
+means = []
+
+for i in range(0, len(reward_list), bucket):
+    chunk = reward_list[i : i+bucket]
+    mean = sum(chunk)/bucket
+    means.append(mean)
+
+plt.plot(points , eps_lis)
+plt.title("epsilon exponenetial decay with deltaEpsilon = 0.001")
+plt.xlabel("episode")
+plt.ylabel("epsilon")
+plt.show()
+
+plt.plot(points , reward_list)
+plt.title("rewards with alpha=0.5, gamma=0.99, deltaEpsilon=0.001")
+plt.xlabel("episode")
+plt.ylabel("reward")
+plt.show()
+
+plt.plot(bucket_points , means)
+plt.title("rewards with alpha=0.5, gamma=0.99, deltaEpsilon=0.001")
+plt.xlabel("buckets of 100 episodes")
+plt.ylabel("reward")
+plt.show()
+
+
+input("Press Enter to continue...")
 total_reward = testing("greedy")
 total_reward = testing("random")
