@@ -102,7 +102,7 @@ def Q_learning():
             d_state = next_d_state #we update the state, ww do it for OUR computations, the state is saved in the env which will do the next step on its own
 
         if epsilon > epsilon_floor:
-            #epsilon *= epsilon_decay
+            #epsilon -= epsilon_decay
             epsilon = epsilon_floor + (epsilon_max - epsilon_floor)*np.exp(-epsilon_delta*e)
         
         reward_list.append(episode_R)
@@ -155,11 +155,11 @@ max_steps = 500
 epsilon_floor = 0.01
 epsilon_max = 1
 
-epsilon_delta = 0.005
+epsilon_delta = 0.0001
 alpha = 0.5
 gamma = 0.99
 
-epsilon_decay = 0.999
+epsilon_decay = 0.000099
 bucket = 100
 
 
@@ -167,7 +167,7 @@ qtable, reward_list , eps_lis = Q_learning()
 # Example list
 
 list_str = str(reward_list)
-with open("learning4.txt", "w") as file:
+with open("learning6.txt", "w") as file:
     file.write(list_str)
 
 #f = open("./Scrivania/ML/dict.txt","w")
@@ -188,19 +188,19 @@ for i in range(0, len(reward_list), bucket):
     means.append(mean)
 
 plt.plot(points , eps_lis)
-plt.title("epsilon exponenetial decay with deltaEpsilon = 0.001")
+plt.title("epsilon linear decay")
 plt.xlabel("episode")
 plt.ylabel("epsilon")
 plt.show()
 
 plt.plot(points , reward_list)
-plt.title("rewards with alpha=0.5, gamma=0.99, deltaEpsilon=0.001")
+plt.title("rewards with alpha=0.5, gamma=0.99")
 plt.xlabel("episode")
 plt.ylabel("reward")
 plt.show()
 
 plt.plot(bucket_points , means)
-plt.title("rewards with alpha=0.5, gamma=0.99, deltaEpsilon=0.001")
+plt.title("rewards with alpha=0.5, gamma=0.99")
 plt.xlabel("buckets of 100 episodes")
 plt.ylabel("reward")
 plt.show()
