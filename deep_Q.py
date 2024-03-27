@@ -18,11 +18,12 @@ import matplotlib.pyplot as plt
 ##define agent
 
 class DQNagent:
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, action_space):
         self.state_size = state_size
         self.action_size = action_size
+        self.action_space = action_space
 
-        self.memory = deque(maxlen=2000) ##we play 1000 episodes per epoch but only remember some of the events which happen, state action and reward, and use them to train 
+        self.memory = deque(maxlen=100_000) ##we play 1000 episodes per epoch but only remember some of the events which happen, state action and reward, and use them to train 
                                          ##the model. This prevents us to use all the episodes and not use close events which do not provide many new information
                                          ## Also by sampling by different scenarios we analyze more of them. We store these groups of episodes up to 2000, then we start to forget the oldest
 
@@ -31,8 +32,8 @@ class DQNagent:
         self.epsilon_floor = 0.01
         self.epsilon_max = 1.0
 
-        self.gamma = 0.99
-        self.alpha = 0.1
+        self.gamma = 0.9
+        self.alpha = 0.001
         self.delta_epsilon = 0.01
 
         self.model = self._build_model()
@@ -57,7 +58,7 @@ class DQNagent:
         
         if np.random.rand() <= self.epsilon:
             #print("random")
-            return random.randrange(self.action_size)
+            return self.action_space.sample()
         
         act_values = self.model.predict(state, verbose=0)
         #print(act_values)  #uses the predict method of the sequential model for exploitation trying to predict the best action to take 
@@ -70,7 +71,7 @@ class DQNagent:
         for state, action, reward, next_state, done in minibatch:
             target = reward                                #if we met a termination condition, so max steps(2000) or lost, we fetch the reward
             if not done:
-                target = (reward + self.gamma * np.amax(self.model.predict(next_state, verbose=0)[0])) #otherwise we make an estimation of the future reward, using the NN
+                target = (reward + self.gamma * np.max(self.model.predict(next_state, verbose=0)[0])) #otherwise we make an estimation of the future reward, using the NN
             target_f = self.model.predict(state, verbose=0)            
             target_f[0][action] = target
 
@@ -83,15 +84,15 @@ class DQNagent:
      #   self.model.save_weights(name)
 
 
-def training():
+def training(agent):
 
-    done = False
     results = []
     epsilon = []
 
     for e in range(learn_eps): #training
 
-        totalReward = 0
+        #totalReward = 0
+        print(vars(agent))
         state , _= env.reset()
         #print(state)
         state = np.reshape(state, [1, state_size])#just transposing row to column
@@ -105,7 +106,7 @@ def training():
 
             next_state, reward, done , _ , _,  = env.step(action)
 
-            totalReward += reward
+            #totalReward += reward
 
             next_state = np.reshape(next_state, [1, state_size])
 
@@ -114,13 +115,15 @@ def training():
             state = next_state
 
             if done:
-                print("episode: {}/{}, score: {}, e: {:.2}".format(e, learn_eps, totalReward, agent.epsilon))
-                #results.append(time)
+                print("episode: {}/{}, score: {}, e: {:.2}".format(e, learn_eps, time, agent.epsilon))
+                results.append(time)
                 break
 
         if len(agent.memory) > batch_size:
         
+            #print('start training')
             agent.replay(batch_size)
+            #print('end training')
 
         if agent.epsilon > agent.epsilon_floor:
             agent.epsilon *= agent.epsilon_decay
@@ -131,7 +134,7 @@ def training():
             #print('#agent updated#')
 
         epsilon.append(agent.epsilon)
-        results.append(totalReward)
+         #results.append(totalReward)
         
     print(results, epsilon)
     return results, epsilon
@@ -182,13 +185,14 @@ def testing(policy):
 env = gym.make('CartPole-v1')
 state_size = env.observation_space.shape[0]
 action_size = env.action_space.n
+action_space = env.action_space
 batch_size = 32
 learn_eps = 500
 test_eps = 50
 
 #output_dir = './Cartpole_model.keras'
 
-agent = DQNagent(state_size, action_size)
+agent_ = DQNagent(state_size, action_size, action_space)
 
 '''if not os.path.isfile('./Scrivania/ML/Cartpole_model.keras'):
     agent.model.save('./Scrivania/ML/Cartpole_model.keras')
@@ -202,7 +206,7 @@ mod = str(input("Inserire modalità: "))
 #### TRAIN THE MODEL ####
 if mod == '1':
     #agent.model = keras.models.load_model("./Desktop/ML/Cartpole_model.keras") #per riprendere un vecchio training
-    results, epsilon = training()
+    results, epsilon = training(agent_)
     
     list_str = str(results)
     with open("learning1.txt", "w") as file:
