@@ -5,21 +5,23 @@ import numpy as np
 epsilon = 1.0
 epsilon_floor = 0.01
 epsilon_max = 1.0
-delta_epsilon = 0.01
+delta_epsilon = 0.001
 
 epsilon_list = []
 
 for e in range(500):
 
+    #epsilon = -0.00198*e +1
     epsilon = (epsilon_max - epsilon_floor) * np.exp(-delta_epsilon * e) + epsilon_floor
     epsilon_list.append(epsilon)
+
 
 
 x_axis = list(range(500))
 
 plt.plot(x_axis, epsilon_list)
 #plt.plot(x_axis , rand , color = 'r' , label = 'untrained')
-plt.title("epsilon")
+plt.title("epsilon exponential decay with deltaEpsilon = 0.001")
 plt.xlabel("episode")
 plt.ylabel("epsilon")
 plt.show()

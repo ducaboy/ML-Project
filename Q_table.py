@@ -17,11 +17,8 @@ def discretization():
 
         intervals = np.linspace(upperBound[i], lowerBound[i], n_intervals) #given the bounds and the number of intervals i want i discretize the domanin into that intervals, I do it
                                                                             #inside  a for loop since i need to do it for each of the 4 states
-        #index_positions = np.digitize(state[i] , intervals)
-
         discretized_space.append(intervals)
 
-    #print(len(discretized_space))
     return discretized_space    #this function returns the discretized domain
 
 def state_discretization(state, discretized_space): #this other function maps the state returned by the environment to the closest point in the discretized domain
@@ -30,15 +27,12 @@ def state_discretization(state, discretized_space): #this other function maps th
 
     for i in range(env.observation_space.shape[0]):
          
-        #print("state: {} , bins: {}".format(state[i] , discretized_space[i]))
-
         if (state[i] >= max(discretized_space[i])):
             state[i] = max(discretized_space[i]) - 0.000001 #if the state is larger then the max value of the discretized state a key error is returned giving the length of the discretized
                                                             #space as the value of that state ex: (33, 50 , 12 ,4) this gives an error as the qtable entry 50 does not exist
         if (state[i] <= min(discretized_space[i])):
             state[i] = min(discretized_space[i]) + 0.000001     
         bin_index = np.digitize(state[i], discretized_space[i] ) # to do it it just uses this numpy function
-        #print("Bin index:", bin_index)
         #discretized_state.append(discretized_space[i][bin_index]) #this function returns the index, so if I want the state I need to take the corresponding point in the discretized space
         discretized_state.append(bin_index) #anyway apparently i don't need that, it's more useful to get the index s.t i can use it in the q table so i do it
 
@@ -64,13 +58,12 @@ def Q_learning():
                    for l in range(n_intervals):
                         Qtab.update({(i,j,k,l) : [0,0]})
 
-    #print(Qtab)
+    discretized_space = discretization() 
     
     for e in range(n_episodes):
     
         state, _ = env.reset()
-        done = False                                          #reset the environemnt and get the starting space
-        discretized_space = discretization()                            #discretize the space
+        done = False                                          #reset the environemnt and get the starting space                            
         d_state = state_discretization(state, discretized_space)
         print(e , epsilon)
         episode_R = 0
@@ -167,45 +160,15 @@ qtable, reward_list , eps_lis = Q_learning()
 # Example list
 
 list_str = str(reward_list)
-with open("learning6.txt", "w") as file:
+with open("learning.txt", "w") as file:
     file.write(list_str)
 
-#f = open("./Scrivania/ML/dict.txt","w")
-
-# write file
-#f.write( str(qtable) )
-
-# close file
-#f.close()
-points = list(range(int(n_episodes)))
-bucket_points = list(range(int(n_episodes/bucket)))
-#print(points)
-means = []
-
-for i in range(0, len(reward_list), bucket):
-    chunk = reward_list[i : i+bucket]
-    mean = sum(chunk)/bucket
-    means.append(mean)
-
-plt.plot(points , eps_lis)
-plt.title("epsilon linear decay")
-plt.xlabel("episode")
-plt.ylabel("epsilon")
-plt.show()
-
-plt.plot(points , reward_list)
-plt.title("rewards with alpha=0.5, gamma=0.99")
-plt.xlabel("episode")
-plt.ylabel("reward")
-plt.show()
-
-plt.plot(bucket_points , means)
-plt.title("rewards with alpha=0.5, gamma=0.99")
-plt.xlabel("buckets of 100 episodes")
-plt.ylabel("reward")
-plt.show()
-
-
 input("Press Enter to continue...")
+
 total_reward = testing("greedy")
+
+list_stri = str(total_reward)
+with open("testing.txt", "w") as file:
+    file.write(list_str)
+
 total_reward = testing("random")

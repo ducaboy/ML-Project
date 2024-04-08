@@ -1,9 +1,4 @@
 import os
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
-##import dependecies
-
 import gymnasium as gym 
 import random
 import numpy as np
@@ -15,32 +10,28 @@ import keras
 import matplotlib.pyplot as plt
 
 
-##define agent
-
 class DQNagent:
     def __init__(self, state_size, action_size, action_space):
-        self.state_size = state_size
-        self.action_size = action_size
-        self.action_space = action_space
+        
+        self.state_size = state_size        #we assign the dimension of the observation space, in our case 4
+        self.action_size = action_size      #the size of the action space, in our case 2
+        self.action_space = action_space    #the type of the action space
 
-        self.memory = deque(maxlen=100_000) ##we play 1000 episodes per epoch but only remember some of the events which happen, state action and reward, and use them to train 
-                                         ##the model. This prevents us to use all the episodes and not use close events which do not provide many new information
-                                         ## Also by sampling by different scenarios we analyze more of them. We store these groups of episodes up to 2000, then we start to forget the oldest
-
+        self.memory = deque(maxlen=100_000) #we play a total of 500 episodes, each for a maximum of 500 steps, each step corresponds to a state. What we do is store these states in this big vector and then to make the agent learn we make him replay batches made of random elements of this vector. 
+                                            #picking random events allow to pick different scenarios because if we just replay states in order they will jsut be too similar and the agent won't have too much new information to learn from
         self.epsilon = 1.0
-        self.epsilon_decay = 0.995
         self.epsilon_floor = 0.01
         self.epsilon_max = 1.0
 
-        self.gamma = 0.99
-        self.alpha = 0.001
-        self.delta_epsilon = 0.01
+        self.gamma = 0.95
+        self.alpha = 0.01
+        self.delta_epsilon = 0.001
 
         self.model = self._build_model()
 
     def _build_model(self):
 
-        model = Sequential()
+        model = Sequential() #we build our network, it's a nn made of one input layer, one hidden and one output layer
 
         model.add(Dense(24 , input_dim = self.state_size , activation= 'relu'))
         model.add(Dense(24 , activation = 'relu'))
@@ -57,11 +48,9 @@ class DQNagent:
     def act(self, state):
         
         if np.random.rand() < self.epsilon:
-            #print("random")
+            print("random")
             return self.action_space.sample()
-        
-        #act_values = self.model.predict(state, verbose=0)
-        #print(act_values)  #uses the predict method of the sequential model for exploitation trying to predict the best action to take 
+        print("exploit" , self.model.predict(state, verbose=0)[0])
         return np.argmax(self.model.predict(state, verbose=0)[0])
     
     def replay(self, batch_size): #TRAINING
@@ -76,13 +65,8 @@ class DQNagent:
             target_f[0][action] = target
 
             self.model.fit(state, target_f, epochs=1, verbose=0 )
- 
-    #def load(self, name):
-     #   self.model.load_weights(name)
 
-    #def save(self, name):
-     #   self.model.save_weights(name)
-            
+
 env = gym.make('CartPole-v1')
 state_size = env.observation_space.shape[0]
 action_size = env.action_space.n
@@ -90,34 +74,28 @@ action_space = env.action_space
 batch_size = 32
 learn_eps = 500
 test_eps = 50
-episode_steps = 600
-
-#output_dir = './Cartpole_model.keras'
+episode_steps = 500
 
 agent = DQNagent(state_size, action_size, action_space)
 
 results = []
 epsilon = []
+
 done = False
 
 for e in range(learn_eps): #training
 
-    #totalReward = 0
-    #print(vars(agent))
+    totalReward = 0
     state , _= env.reset()
-    #print(state)
     state = np.reshape(state, [1, state_size])#just transposing row to column
-    #state = np.transpose(state)
 
     for time in range(episode_steps):#the cartpole can run maximum 600 timesteps
-
-        #env.render() no render to make it fast
 
         action = agent.act(state)
 
         next_state, reward, done , _ , _,  = env.step(action)
 
-        #totalReward += reward
+        totalReward += reward
 
         next_state = np.reshape(next_state, [1, state_size])
 
@@ -126,68 +104,32 @@ for e in range(learn_eps): #training
         state = next_state
 
         if done:
-            results.append(time)
-            print("episode: {}/{}, results: {}, score: {}, e: {:.2}".format(e, learn_eps, len(results), time, agent.epsilon))
             break
 
     if len(agent.memory) > batch_size:
     
-        #print('start training')
-        agent.replay(batch_size)
-        #print('end training')
+        agent.replay(batch_size)       #print('end training')
 
     if agent.epsilon > agent.epsilon_floor:
-        agent.epsilon = (agent.epsilon_max - agent.epsilon_floor) * np.exp(-agent.delta_epsilon * e) + agent.epsilon_floor
-        #agent.epsilon = agent.epsilon_floor + (agent.epsilon_max - agent.epsilon_floor) * np.exp(-agent.delta_epsilon* e)
+        
+        #agent.epsilon = (agent.epsilon_max - agent.epsilon_floor) * np.exp(-agent.delta_epsilon * e) + agent.epsilon_floor
+        agent.epsilon = -0.00198*e +1
 
     if e % 20 == 0:
-        agent.model.save('./Cartpole_model2.keras')
+        
+        agent.model.save('./Cartpole_model.keras')
         #print('#agent updated#')
+    results.append(totalReward)
+    print("episode: {}/{}, score: {}, e: {:.2}".format(e, learn_eps, totalReward, agent.epsilon))
 
     epsilon.append(agent.epsilon)
         #results.append(totalReward)
-    
-#print(results, epsilon)
-
-    
+    #print(results, epsilon)    
 list_str = str(results)
-with open("learning1.txt", "w") as file:
+with open("learning.txt", "w") as file:
     file.write(list_str)
 
-
-points = list(range(learn_eps))
-
-plt.plot(points , epsilon)
-plt.title("epsilon exponential decay with deltaEpsilon = 0.01")
-plt.xlabel("episode")
-plt.ylabel("epsilon")
-plt.show()
-
-plt.plot(points , results)
-plt.title("training with alpha=0.001, gamma=0.99, deltaEpsilon = 0.01")
-plt.xlabel("episode")
-plt.ylabel("reward")
-plt.show()
-
-bucket = 20
-bucket_points = list(range(int(learn_eps/bucket)))
-#print(points)
-means = []
-
-for i in range(0, len(results), bucket):
-    chunk = results[i : i+bucket]
-    mean = sum(chunk)/bucket
-    means.append(mean)
-
-plt.plot(bucket_points , means)
-plt.title("training with alpha=0.001, gamma=0.99, deltaEpsilon = 0.01")
-plt.xlabel("buckets of 20 episodes")
-plt.ylabel("reward")
-plt.show()
-
 input("Press Enter to continue...")
-
-
 
 play_results = []
 agent.epsilon = 0.0
@@ -197,14 +139,16 @@ for e in range(test_eps): #TESTING
     state , _= env.reset()
     state = np.reshape(state, [1, state_size])#just transposing row to column
     #state = np.transpose(state)
+    totalReward = 0
 
     for time in range(episode_steps):#the cartpole can run maximum 5000 timesteps
 
         #env.render()
-
         action = agent.act(state)
 
         next_state, reward, done , _ , _,  = env.step(action)
+
+        totalReward += reward
 
         next_state = np.reshape(next_state, [1, state_size])
 
@@ -212,24 +156,14 @@ for e in range(test_eps): #TESTING
 
         state = next_state
 
-        #print('miao')
-
         if done:
-            
-            play_results.append(time)
-            print("episode: {}/{}, results: {}, score: {}, e: {:.2}".format(e, test_eps, len(play_results), time, agent.epsilon))
             break
+    
+    play_results.append(totalReward)
+    print("episode: {}/{}, results: {}, score: {}, e: {:.2}".format(e, test_eps, len(play_results), totalReward, agent.epsilon))
     
 
 list_str = str(play_results)
-with open("playing2.txt", "w") as file:
+with open("playing.txt", "w") as file:
     file.write(list_str)
 
-
-points = list(range(test_eps))
-
-plt.plot(points , play_results)
-plt.title("testing with alpha=0.001, gamma=0.99, deltaEpsilon = 0.01")
-plt.xlabel("episode")
-plt.ylabel("reward")
-plt.show()
